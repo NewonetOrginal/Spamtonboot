@@ -6,12 +6,11 @@ use uefi::prelude::*;
 
 #[entry]
 fn main() -> Status {
-    // Initialize the UEFI system table helpers (enables macros like uefi::print!)
     uefi::helpers::init().unwrap();
 
-    uefi::println!("Hello, UEFI world from bare metal!");
+    let x = "Hello, Spamton";
+    uefi::println!("{x}");
 
-    // Hang or return Success so UEFI firmware knows it finished
     Status::SUCCESS
 }
 
