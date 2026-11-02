@@ -2,7 +2,7 @@ target = target/x86_64-unknown-uefi/debug/spamtonboot.efi
 efi_boot = build/efi/boot/bootx64.efi
 ovmf_fd = $(shell nix-build '<nixpkgs>' -A OVMF.fd --no-out-link)/FV/OVMF.fd
 
-.PHONY: run build
+.PHONY: run build save
 
 build:
 	cargo build --target x86_64-unknown-uefi
@@ -14,3 +14,8 @@ run: build
 		-bios $(ovmf_fd) \
 		-drive file=fat:rw:build,format=raw \
 		-net none
+
+save:
+	git add .
+	git commit -m "Automated checkpoint update" || true
+	git push origin main
