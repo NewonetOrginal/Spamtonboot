@@ -17,5 +17,5 @@ run: build
 
 save:
 	git add .
-	git commit -m "Automated checkpoint update" || true
+	git commit -m "update" || true
 	git push origin main
