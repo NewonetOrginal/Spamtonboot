@@ -42,7 +42,7 @@ fn main() -> Status {
     let fbf_pt = frame_buffer.as_mut_ptr() as *mut u32;
 
     unsafe {
-        draw_pixel(fbf_pt, &mode_info, 100, 100, (0, 0, 255));
+        draw_pixel(fbf_pt, &mode_info, 100, 100, (255, 0, 255));
     }
 
     loop {}
