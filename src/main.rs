@@ -28,8 +28,6 @@ unsafe fn draw_pixel(fbf_pt: *mut u32, mode_info: &ModeInfo, x: usize, y: usize,
 fn main() -> Status {
     uefi::helpers::init().unwrap();
 
-    uefi::println!("hello world");
-
     let handle = boot::get_handle_for_protocol::<GraphicsOutput>().unwrap();
     let mut gop = boot::open_protocol_exclusive::<GraphicsOutput>(handle).unwrap();
 
