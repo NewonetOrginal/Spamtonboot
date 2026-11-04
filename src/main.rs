@@ -7,7 +7,13 @@ use uefi::prelude::*;
 use uefi::proto::console::gop::GraphicsOutput;
 use uefi::proto::console::gop::ModeInfo;
 
-unsafe fn draw_pixel(fbf_pt: *mut u32, mode_info: &ModeInfo, x: usize, y: usize, saturation: u8) {
+unsafe fn draw_pixel(
+    fbf_pt: *mut u32,
+    mode_info: &ModeInfo,
+    x: usize,
+    y: usize,
+    rgb: (u8, u8, u8),
+) {
     let stride = mode_info.stride();
     let width = mode_info.resolution().0;
     let heigth = mode_info.resolution().1;
@@ -17,7 +23,7 @@ unsafe fn draw_pixel(fbf_pt: *mut u32, mode_info: &ModeInfo, x: usize, y: usize,
     }
 
     let offset = (y * stride + x) as usize;
-    let color = u32::from_ne_bytes([saturation, saturation, saturation, 0]);
+    let color = u32::from_ne_bytes([rgb.0, rgb.1, rgb.2, 0]);
     unsafe {
         fbf_pt.add(offset).write_volatile(color);
     }
@@ -36,7 +42,7 @@ fn main() -> Status {
     let fbf_pt = frame_buffer.as_mut_ptr() as *mut u32;
 
     unsafe {
-        draw_pixel(fbf_pt, &mode_info, 100, 100, 255);
+        draw_pixel(fbf_pt, &mode_info, 100, 100, (255, 0, 0));
     }
 
     loop {}
