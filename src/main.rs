@@ -10,18 +10,22 @@ use uefi::proto::console::gop::GraphicsOutput;
 fn main() -> Status {
     uefi::helpers::init().unwrap();
 
-    let gop_handle = boot::get_handle_for_protocol::<GraphicsOutput>().unwrap();
-    let gop = boot::open_protocol_exclusive::<GraphicsOutput>(gop_handle).unwrap();
+    uefi::println!("hello world");
+
+    let handle = boot::get_handle_for_protocol::<GraphicsOutput>().unwrap();
+    let gop = boot::open_protocol_exclusive::<GraphicsOutput>(handle).unwrap();
 
     let mode_info = gop.current_mode_info();
-    let (width, height) = mode_info.resolution();
 
-    uefi::println!("res: {}x{}", width, height);
+    let width = mode_info.resolution().0;
+    let height = mode_info.resolution().1;
+    let stride = mode_info.stride();
 
     loop {}
 }
 
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
+    uefi::println!("hello panic!");
     loop {}
 }
