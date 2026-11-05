@@ -77,11 +77,11 @@ fn main() -> Status {
     let mut frame_buffer = gop.frame_buffer();
     let fbf_pt = frame_buffer.as_mut_ptr() as *mut u32;
 
-    unsafe {
-        // draw_pixel(fbf_pt, &mode_info, 100, 100, (255, 0, 255));
-    }
+    // unsafe {
+    // draw_pixel(fbf_pt, &mode_info, 100, 100, (255, 0, 255));
+    // }
 
-    draw_line(100, 100, 500, 500, (255, 255, 0), fbf_pt, &mode_info);
+    draw_line(100, 100, 500, 1000, (255, 255, 0), fbf_pt, &mode_info);
 
     loop {}
 }
