@@ -85,8 +85,10 @@ fn draw_rectangle(
     } else {
         let xsize = (x1 - x2).abs();
         let ysize = (y1 - y2).abs();
-        for x in 0..xsize {
-            for y in 0..ysize {
+        let startx = if x1 < x2 { x1 } else { x2 };
+        let starty = if y1 < y2 { y1 } else { y2 };
+        for x in startx..(startx + xsize) {
+            for y in starty..(starty + ysize) {
                 unsafe {
                     draw_pixel(fbf_pt, mode_info, x as usize, y as usize, bgr);
                 }
