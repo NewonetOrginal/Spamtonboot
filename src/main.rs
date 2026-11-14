@@ -2,7 +2,9 @@
 #![no_main]
 
 use core::panic::PanicInfo;
+use core::ptr;
 use core::slice::SplitInclusiveMut;
+use core::time::Duration;
 use uefi::boot;
 use uefi::char16;
 use uefi::prelude::*;
@@ -99,20 +101,11 @@ fn draw_rectangle(
     }
 }
 
-fn reset_canvas(frame_pt: *mut u32, mode_info: &ModeInfo, bgr: (u8, u8, u8)) {
-    // asd
-    let stride = mode_info.stride();
-    let width = mode_info.resolution().0;
-    let heigth = mode_info.resolution().1;
+fn reset_canvas(frame_pt: *mut u32, bgr: (u8, u8, u8)) {
     let color = u32::from_ne_bytes([bgr.0, bgr.1, bgr.2, 0]);
-
-    for y in 0..heigth {
-        for x in 0..width {
-            let offset = (y * stride + x) as usize;
-            unsafe {
-                frame_pt.add(offset).write_volatile(color);
-            }
-        }
+    unsafe {
+        let screen_slice = core::slice::from_raw_parts_mut(frame_pt, 640 * 480);
+        screen_slice.fill(color);
     }
 }
 
@@ -144,18 +137,7 @@ fn main() -> Status {
     let fbf_pt = frame_buffer.as_mut_ptr() as *mut u32;
     let frender_pt = unsafe { core::ptr::addr_of_mut!(FRENDER[0]) };
 
-    reset_canvas(frender_pt, &mode_info, (0, 50, 255));
-    draw_rectangle(300, 200, 340, 280, frender_pt, &mode_info, (255, 50, 0));
-    render(fbf_pt);
-
     loop {}
-
-    // let handle = boot::get_handle_for_protocol::<Input>().unwrap();
-    // let mut txt_in = boot::open_protocol_exclusive::<Input>(handle).unwrap();
-
-    // let mut x = 0;
-    // let mut y = 0;
-
     // loop {
     //     unsafe {
     //         draw_pixel(fbf_pt, &mode_info, x, y, (255, 255, 255));
