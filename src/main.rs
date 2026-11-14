@@ -97,6 +97,23 @@ fn draw_rectangle(
     }
 }
 
+fn reset_canvas(fbf_pt: *mut u32, mode_info: &ModeInfo, bgr: (u8, u8, u8)) {
+    // asd
+    let stride = mode_info.stride();
+    let width = mode_info.resolution().0;
+    let heigth = mode_info.resolution().1;
+    let color = u32::from_ne_bytes([bgr.0, bgr.1, bgr.2, 0]);
+
+    for y in 0..heigth {
+        for x in 0..width {
+            let offset = (y * stride + x) as usize;
+            unsafe {
+                fbf_pt.add(offset).write_volatile(color);
+            }
+        }
+    }
+}
+
 #[entry]
 
 fn main() -> Status {
@@ -105,17 +122,21 @@ fn main() -> Status {
     let handle = boot::get_handle_for_protocol::<GraphicsOutput>().unwrap();
     let mut gop = boot::open_protocol_exclusive::<GraphicsOutput>(handle).unwrap();
 
+    let mut target_mode = None;
+    for mode in gop.modes() {
+        if mode.info().resolution() == (640, 480) {
+            target_mode = Some(mode);
+            break;
+        }
+    }
+    gop.set_mode(&target_mode.expect("AAA it doesnt work."));
+
     let mode_info = gop.current_mode_info();
     let mut frame_buffer = gop.frame_buffer();
     let fbf_pt = frame_buffer.as_mut_ptr() as *mut u32;
 
-    // unsafe {
-    // draw_pixel(fbf_pt, &mode_info, 100, 100, (255, 0, 255));
-    // }
-
-    // draw_line(100, 100, 500, 1000, (255, 255, 0), fbf_pt, &mode_info);
-    draw_rectangle(100, 250, 1000, 500, fbf_pt, &mode_info, (255, 255, 255));
-
+    reset_canvas(fbf_pt, &mode_info, (0, 50, 255));
+    draw_rectangle(300, 200, 340, 280, fbf_pt, &mode_info, (255, 50, 0));
     loop {}
 
     // let handle = boot::get_handle_for_protocol::<Input>().unwrap();
