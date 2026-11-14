@@ -100,6 +100,52 @@ fn draw_rectangle(
         }
     }
 }
+fn draw_soul(
+    frame_pt: *mut u32,
+    mode_info: &ModeInfo,
+    centerx: usize,
+    centery: usize,
+    bgr: (u8, u8, u8),
+) {
+    let heart_offsets = [
+        (-1, -2),
+        (1, -2),
+        (-2, -1),
+        (-1, -1),
+        (0, -1),
+        (1, -1),
+        (2, -1),
+        (-2, 0),
+        (-1, 0),
+        (0, 0),
+        (1, 0),
+        (2, 0),
+        (-1, 1),
+        (0, 1),
+        (1, 1),
+        (0, 2),
+    ];
+
+    let scale = 5isize;
+
+    for &(ox, oy) in &heart_offsets {
+        let basex = centerx as isize + (ox * scale);
+        let basey = centery as isize + (oy * scale);
+
+        for sx in 0..scale {
+            for sy in 0..scale {
+                let px = basex + sx;
+                let py = basey + sy;
+
+                if px >= 0 && py >= 0 {
+                    unsafe {
+                        draw_pixel(frame_pt, mode_info, px as usize, py as usize, bgr);
+                    }
+                }
+            }
+        }
+    }
+}
 
 fn reset_canvas(frame_pt: *mut u32, bgr: (u8, u8, u8)) {
     let color = u32::from_ne_bytes([bgr.0, bgr.1, bgr.2, 0]);
@@ -123,6 +169,9 @@ fn main() -> Status {
     let handle = boot::get_handle_for_protocol::<GraphicsOutput>().unwrap();
     let mut gop = boot::open_protocol_exclusive::<GraphicsOutput>(handle).unwrap();
 
+    let handle = boot::get_handle_for_protocol::<Input>().unwrap();
+    let mut txt_in = boot::open_protocol_exclusive::<Input>(handle).unwrap();
+
     let mut target_mode = None;
     for mode in gop.modes() {
         if mode.info().resolution() == (640, 480) {
@@ -137,30 +186,38 @@ fn main() -> Status {
     let fbf_pt = frame_buffer.as_mut_ptr() as *mut u32;
     let frender_pt = unsafe { core::ptr::addr_of_mut!(FRENDER[0]) };
 
-    loop {}
-    // loop {
-    //     unsafe {
-    //         draw_pixel(fbf_pt, &mode_info, x, y, (255, 255, 255));
-    //     }
+    let mut x = 320;
+    let mut y = 240;
 
-    //     match txt_in.read_key() {
-    //         Ok(Some(key)) => match key {
-    //             Key::Printable(c) => {
-    //                 if c == char16!('w') || c == char16!('W') {
-    //                     y = y.saturating_sub(1);
-    //                 } else if c == char16!('a') || c == char16!('A') {
-    //                     x = x.saturating_sub(1);
-    //                 } else if c == char16!('s') || c == char16!('S') {
-    //                     y += 1;
-    //                 } else if c == char16!('d') || c == char16!('D') {
-    //                     x += 1;
-    //                 }
-    //             }
-    //             Key::Special(_) => {}
-    //         },
-    //         _ => {}
-    //     }
-    // }
+    loop {
+        reset_canvas(frender_pt, (0, 0, 0));
+
+        draw_soul(frender_pt, &mode_info, x, y, (0, 0, 255));
+
+        render(fbf_pt);
+
+        while let Ok(Some(key)) = txt_in.read_key() {
+            match key {
+                Key::Printable(c) => {
+                    if c == char16!('w') || c == char16!('W') {
+                        y = y.saturating_sub(1);
+                    }
+                    if c == char16!('a') || c == char16!('A') {
+                        x = x.saturating_sub(1);
+                    }
+                    if c == char16!('s') || c == char16!('S') {
+                        y += 1;
+                    }
+                    if c == char16!('d') || c == char16!('D') {
+                        x += 1;
+                    }
+                }
+                Key::Special(_) => {}
+            }
+        }
+
+        uefi::boot::stall(Duration::from_micros(16_666));
+    }
 }
 
 #[panic_handler]
