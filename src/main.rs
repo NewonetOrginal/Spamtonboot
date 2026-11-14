@@ -17,7 +17,7 @@ fn draw_line(
     x1: isize,
     y1: isize,
     bgr: (u8, u8, u8),
-    fbf_pt: *mut u32,
+    frame_pt: *mut u32,
     mode_info: &ModeInfo,
 ) {
     let dx = (x0 - x1).abs();
@@ -30,7 +30,7 @@ fn draw_line(
 
     loop {
         unsafe {
-            draw_pixel(fbf_pt, mode_info, x0 as usize, y0 as usize, bgr);
+            draw_pixel(frame_pt, mode_info, x0 as usize, y0 as usize, bgr);
         }
         if x0 == x1 && y0 == y1 {
             break;
@@ -47,8 +47,10 @@ fn draw_line(
     }
 }
 
+static mut FRENDER: [u32; 640 * 480] = [0; 640 * 480];
+
 unsafe fn draw_pixel(
-    fbf_pt: *mut u32,
+    frame_pt: *mut u32,
     mode_info: &ModeInfo,
     x: usize,
     y: usize,
@@ -65,7 +67,7 @@ unsafe fn draw_pixel(
     let offset = (y * stride + x) as usize;
     let color = u32::from_ne_bytes([bgr.0, bgr.1, bgr.2, 0]);
     unsafe {
-        fbf_pt.add(offset).write_volatile(color);
+        frame_pt.add(offset).write_volatile(color);
     }
 }
 
@@ -74,13 +76,13 @@ fn draw_rectangle(
     y1: isize,
     x2: isize,
     y2: isize,
-    fbf_pt: *mut u32,
+    frame_pt: *mut u32,
     mode_info: &ModeInfo,
     bgr: (u8, u8, u8),
 ) {
     if x1 == x2 && y1 == y2 {
         unsafe {
-            draw_pixel(fbf_pt, mode_info, x1 as usize, y1 as usize, bgr);
+            draw_pixel(frame_pt, mode_info, x1 as usize, y1 as usize, bgr);
         }
     } else {
         let xsize = (x1 - x2).abs();
@@ -90,14 +92,14 @@ fn draw_rectangle(
         for x in startx..(startx + xsize) {
             for y in starty..(starty + ysize) {
                 unsafe {
-                    draw_pixel(fbf_pt, mode_info, x as usize, y as usize, bgr);
+                    draw_pixel(frame_pt, mode_info, x as usize, y as usize, bgr);
                 }
             }
         }
     }
 }
 
-fn reset_canvas(fbf_pt: *mut u32, mode_info: &ModeInfo, bgr: (u8, u8, u8)) {
+fn reset_canvas(frame_pt: *mut u32, mode_info: &ModeInfo, bgr: (u8, u8, u8)) {
     // asd
     let stride = mode_info.stride();
     let width = mode_info.resolution().0;
@@ -108,9 +110,15 @@ fn reset_canvas(fbf_pt: *mut u32, mode_info: &ModeInfo, bgr: (u8, u8, u8)) {
         for x in 0..width {
             let offset = (y * stride + x) as usize;
             unsafe {
-                fbf_pt.add(offset).write_volatile(color);
+                frame_pt.add(offset).write_volatile(color);
             }
         }
+    }
+}
+
+fn render(fbf_pt: *mut u32) {
+    unsafe {
+        core::ptr::copy_nonoverlapping(core::ptr::addr_of!(FRENDER[0]), fbf_pt, 640 * 480);
     }
 }
 
@@ -134,9 +142,12 @@ fn main() -> Status {
     let mode_info = gop.current_mode_info();
     let mut frame_buffer = gop.frame_buffer();
     let fbf_pt = frame_buffer.as_mut_ptr() as *mut u32;
+    let frender_pt = unsafe { core::ptr::addr_of_mut!(FRENDER[0]) };
 
-    reset_canvas(fbf_pt, &mode_info, (0, 50, 255));
-    draw_rectangle(300, 200, 340, 280, fbf_pt, &mode_info, (255, 50, 0));
+    reset_canvas(frender_pt, &mode_info, (0, 50, 255));
+    draw_rectangle(300, 200, 340, 280, frender_pt, &mode_info, (255, 50, 0));
+    render(fbf_pt);
+
     loop {}
 
     // let handle = boot::get_handle_for_protocol::<Input>().unwrap();
