@@ -2,8 +2,6 @@
 #![no_main]
 
 use core::panic::PanicInfo;
-use core::ptr;
-use core::slice::SplitInclusiveMut;
 use core::time::Duration;
 use uefi::boot;
 use uefi::char16;
@@ -11,7 +9,6 @@ use uefi::prelude::*;
 use uefi::proto::console::gop::GraphicsOutput;
 use uefi::proto::console::gop::ModeInfo;
 use uefi::proto::console::text::{Input, Key};
-use uefi::proto::network::EfiMacAddr;
 
 fn draw_line(
     mut x0: isize,
