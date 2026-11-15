@@ -176,7 +176,7 @@ fn main() -> Status {
             break;
         }
     }
-    gop.set_mode(&target_mode.expect("AAA it doesnt work."));
+    gop.set_mode(&target_mode.unwrap());
 
     let mode_info = gop.current_mode_info();
     let mut frame_buffer = gop.frame_buffer();
