@@ -1,6 +1,7 @@
 #![no_std]
 #![no_main]
 
+use core::arch::asm;
 use core::panic::PanicInfo;
 use core::time::Duration;
 use uefi::boot;
@@ -9,6 +10,20 @@ use uefi::prelude::*;
 use uefi::proto::console::gop::GraphicsOutput;
 use uefi::proto::console::gop::ModeInfo;
 use uefi::proto::console::text::{Input, Key};
+
+fn inb(port: u16) -> u8 {
+    let result: u8;
+    unsafe {
+        asm!("in al, dx", in("dx") port, out("al") result, options(nomem, nostack, preserves_flags));
+    }
+    result
+}
+
+fn outb(port: u16, value: u8) {
+    unsafe {
+        asm!("out dx, al", in("dx") port, in("al") value, options(nomem, nostack, preserves_flags));
+    }
+}
 
 fn draw_line(
     mut x0: isize,
@@ -183,38 +198,82 @@ fn main() -> Status {
     let fbf_pt = frame_buffer.as_mut_ptr() as *mut u32;
     let frender_pt = unsafe { core::ptr::addr_of_mut!(FRENDER[0]) };
 
-    let mut x = 320;
-    let mut y = 240;
-
-    loop {
-        reset_canvas(frender_pt, (0, 0, 0));
-
-        draw_soul(frender_pt, &mode_info, x, y, (0, 0, 255));
-
-        render(fbf_pt);
-
-        while let Ok(Some(key)) = txt_in.read_key() {
-            match key {
-                Key::Printable(c) => {
-                    if c == char16!('w') || c == char16!('W') {
-                        y = y.saturating_sub(1);
-                    }
-                    if c == char16!('a') || c == char16!('A') {
-                        x = x.saturating_sub(1);
-                    }
-                    if c == char16!('s') || c == char16!('S') {
-                        y += 1;
-                    }
-                    if c == char16!('d') || c == char16!('D') {
-                        x += 1;
-                    }
-                }
-                Key::Special(_) => {}
-            }
-        }
-
-        uefi::boot::stall(Duration::from_micros(16_666));
+    outb(0x64, 0xAD); // disable port 1
+    while (inb(0x64) & 1) != 0 {
+        let _ = inb(0x60); // draining the data from the output buffer
     }
+
+    outb(0x64, 0x20);
+    while (inb(0x64) & 1) == 0 {
+        core::hint::spin_loop(); // fetching config
+    }
+
+    let mut config = inb(0x60); // storing config byte
+
+    config &= !(1 << 6); //disabling legacy scancode translation
+
+    outb(0x64, 0x60);
+    while (inb(0x64) & 2) != 0 {
+        core::hint::spin_loop();
+    }
+    outb(0x60, config); // writing back new config
+
+    outb(0x64, 0xAA); // send self test
+
+    while (inb(0x64) & 1) == 0 {
+        core::hint::spin_loop(); // wait until output buffer has data
+    }
+
+    let self_test_result = inb(0x60); // check if its succes with cheecking if self_search_result != 0x55, and if not handle err
+
+    while (inb(0x64) & 2) != 0 {
+        core::hint::spin_loop();
+    }
+    outb(0x64, 0xAE); // enable port 1
+
+    while (inb(0x64) & 2) != 0 {
+        core::hint::spin_loop();
+    }
+    outb(0x60, 0xFF); // reset data port 0x60
+
+    while (inb(0x64) & 1) == 0 {
+        core::hint::spin_loop();
+    }
+    let ack = inb(0x60); // check if 0xFA then proceed
+
+    // let mut x = 320;
+    // let mut y = 240;
+
+    // loop {
+    //     reset_canvas(frender_pt, (0, 0, 0));
+
+    //     draw_soul(frender_pt, &mode_info, x, y, (0, 0, 255));
+
+    //     render(fbf_pt);
+
+    //     while let Ok(Some(key)) = txt_in.read_key() {
+    //         match key {
+    //             Key::Printable(c) => {
+    //                 if c == char16!('w') || c == char16!('W') {
+    //                     y = y.saturating_sub(1);
+    //                 }
+    //                 if c == char16!('a') || c == char16!('A') {
+    //                     x = x.saturating_sub(1);
+    //                 }
+    //                 if c == char16!('s') || c == char16!('S') {
+    //                     y += 1;
+    //                 }
+    //                 if c == char16!('d') || c == char16!('D') {
+    //                     x += 1;
+    //                 }
+    //             }
+    //             Key::Special(_) => {}
+    //         }
+    //     }
+
+    //     uefi::boot::stall(Duration::from_micros(16_666));
+    // }
+    loop {}
 }
 
 #[panic_handler]
